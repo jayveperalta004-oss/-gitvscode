@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Clone</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        h1 { margin: 5px; font-size: 24px; color: #ffeb3b; }
+        p { margin: 5px 0 15px 0; color: #aaa; }
+        canvas {
+            border: 4px solid #fff;
+            background: #70c5ce;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+        #gameOverScreen {
+            display: none;
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            padding: 20px 40px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #ffeb3b;
+            top: 40%;
+        }
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+
+    <h1>Flappy Bird</h1>
+    <p>Press <b>SPACEBAR</b> or <b>CLICK</b> the screen to jump!</p>
+
+    <div style="position: relative; display: flex; justify-content: center;">
+        <canvas id="gameCanvas" width="400" height="500"></canvas>
+        <div id="gameOverScreen">
+            <h2 style="color: #ff5252; margin: 0 0 10px 0;">GAME OVER</h2>
+            <p>Your Score: <span id="finalScore" style="color: #fff; font-weight: bold;">0</span></p>
+            <button onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const gameOverScreen = document.getElementById("gameOverScreen");
+const finalScoreDisplay = document.getElementById("finalScore");
+
+// Game variables
+let birdY = 250;
+let birdVelocity = 0;
+const gravity = 0.4;
+const jump = -7;
+const birdX = 50;
+const birdSize = 20;
+
+let pipes = [];
+const pipeWidth = 60;
+const pipeGap = 130;
+let pipeSpeed = 2.5;
+let frameCount = 0;
+
+let score = 0;
+let isGameOver = false;
+
+// Handle Controls
+function handleJump() {
+    if (isGameOver) return;
+    birdVelocity = jump;
+}
+window.addEventListener("keydown", (e) => { if (e.code === "Space") handleJump(); });
+canvas.addEventListener("mousedown", handleJump);
+
+function spawnPipe() {
+    const minHeight = 50;
+    const maxHeight = canvas.height - pipeGap - minHeight;
+    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+    pipes.push({
+        x: canvas.width,
+        top: topHeight,
+        bottom: canvas.height - topHeight - pipeGap,
+        passed: false
+    });
+}
+
+function resetGame() {
+    birdY = 250;
+    birdVelocity = 0;
+    pipes = [];
+    score = 0;
+    isGameOver = false;
+    frameCount = 0;
+    gameOverScreen.style.display = "none";
+    loop();
+}
+
+function loop() {
+    if (isGameOver) return;
+
+    // 1. Clear screen
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Physics: Move Bird
+    birdVelocity += gravity;
+    birdY += birdVelocity;
+
+    // 3. Draw Bird (Cute yellow square)
+    ctx.fillStyle = "#ffeb3b";
+    ctx.fillRect(birdX, birdY, birdSize, birdSize);
+    ctx.strokeStyle = "#000";
+    ctx.strokeRect(birdX, birdY, birdSize, birdSize);
+
+    // Floor and Ceiling collisions
+    if (birdY + birdSize > canvas.height || birdY < 0) {
+        endGame();
+    }
+
+    // 4. Handle Pipes
+    if (frameCount % 100 === 0) spawnPipe();
+    frameCount++;
+
+    for (let i = pipes.length - 1; i >= 0; i--) {
+        let p = pipes[i];
+        p.x -= pipeSpeed;
+
+        // Draw Top Pipe (Green)
+        ctx.fillStyle = "#2e7d32";
+        ctx.fillRect(p.x, 0, pipeWidth, p.top);
+        ctx.strokeRect(p.x, 0, pipeWidth, p.top);
+
+        // Draw Bottom Pipe
+        ctx.fillStyle = "#2e7d32";
+        ctx.fillRect(p.x, canvas.height - p.bottom, pipeWidth, p.bottom);
+        ctx.strokeRect(p.x, canvas.height - p.bottom, pipeWidth, p.bottom);
+
+        // Collision detection
+        if (birdX + birdSize > p.x && birdX < p.x + pipeWidth) {
+            if (birdY < p.top || birdY + birdSize > canvas.height - p.bottom) {
+                endGame();
+            }
+        }
+
+        // Score update
+        if (!p.passed && p.x + pipeWidth < birdX) {
+            score++;
+            p.passed = true;
+        }
+
+        // Delete off-screen pipes
+        if (p.x + pipeWidth < 0) pipes.splice(i, 1);
+    }
+
+    // 5. Draw Live Score Text
+    ctx.fillStyle = "white";
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText("Score: " + score, 20, 40);
+
+    requestAnimationFrame(loop);
+}
+
+function endGame() {
+    isGameOver = true;
+    finalScoreDisplay.textContent = score;
+    gameOverScreen.style.display = "block";
+}
+
+// Start the game immediately
+spawnPipe();
+loop();
+</script>
+</body>
+</html>
